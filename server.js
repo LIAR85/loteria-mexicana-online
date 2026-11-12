@@ -1,0 +1,25 @@
+'use strict';
+const express=require('express');
+const http=require('node:http');
+const {Server}=require('socket.io');
+const {CARDS,PATTERNS,shuffle,board,wins,roomCode,token,cleanName}=require('./game');
+const app=express();app.disable('x-powered-by');app.use(express.static('public'));app.get('/health',(_q,r)=>r.json({ok:true}));
+const server=http.createServer(app),io=new Server(server,{maxHttpBufferSize:10000,cors:{origin:false}});
+const rooms=new Map(),MAX_PLAYERS=Number(process.env.MAX_PLAYERS||120);
+const reply=(ack,body)=>{if(typeof ack==='function')ack(body);},ok=(data={})=>({ok:true,...data}),err=error=>({ok:false,error});
+const state=r=>({code:r.code,pattern:r.pattern,status:r.status,players:[...r.players.values()].map(p=>({id:p.id,name:p.name,connected:p.connected,winner:p.winner})),called:r.called,current:r.called.at(-1)||null,rounds:r.rounds,deckRemaining:r.deck.length,winnerNames:[...r.players.values()].filter(p=>p.winner).map(p=>p.name)});
+const announce=r=>io.to(r.code).emit('room:update',state(r));
+function attach(s,r,role,p){if(s.data.code)s.leave(s.data.code);s.join(r.code);s.data={code:r.code,role,playerId:p?.id,hostToken:role==='host'?r.hostToken:undefined};}
+function room(s,host=false){const r=rooms.get(s.data?.code);return r&&(!host||(s.data.role==='host'&&s.data.hostToken===r.hostToken))?r:null;}
+io.on('connection',s=>{
+ s.on('room:create',(data,ack)=>{if(!PATTERNS[data?.pattern])return reply(ack,err('Selecciona una modalidad válida.'));let code;do{code=roomCode();}while(rooms.has(code));const r={code,hostToken:token(),pattern:data.pattern,status:'lobby',players:new Map(),called:[],deck:[],rounds:0};rooms.set(code,r);attach(s,r,'host');reply(ack,ok({code,hostToken:r.hostToken,room:state(r)}));announce(r);});
+ s.on('room:join',(data,ack)=>{const r=rooms.get(String(data?.code||'').trim().toUpperCase());if(!r)return reply(ack,err('Sala no encontrada.'));let p=[...r.players.values()].find(x=>x.playerToken===data?.playerToken&&data?.playerToken);if(!p){if(r.status!=='lobby')return reply(ack,err('La partida ya comenzó.'));if(r.players.size>=MAX_PLAYERS)return reply(ack,err('Sala llena.'));const name=cleanName(data?.name);if(name.length<2)return reply(ack,err('Escribe un nombre de al menos 2 caracteres.'));p={id:token().slice(0,12),playerToken:token(),name,board:board(),marked:[],connected:false,winner:false};r.players.set(p.id,p);}p.connected=true;attach(s,r,'player',p);reply(ack,ok({playerId:p.id,playerToken:p.playerToken,board:p.board,marked:p.marked,room:state(r)}));announce(r);});
+ s.on('room:resumeHost',(data,ack)=>{const r=rooms.get(String(data?.code||'').toUpperCase());if(!r||r.hostToken!==data?.hostToken)return reply(ack,err('No se pudo recuperar la sala.'));attach(s,r,'host');reply(ack,ok({room:state(r)}));announce(r);});
+ s.on('game:start',(_,ack)=>{const r=room(s,true);if(!r)return reply(ack,err('Solo el anfitrión puede iniciar.'));if(r.status!=='lobby'||!r.players.size)return reply(ack,err('Necesitas jugadores y una sala en espera.'));r.status='playing';r.called=[];r.deck=shuffle(CARDS.map(c=>c.id));r.rounds++;for(const p of r.players.values()){p.marked=[];p.winner=false;}announce(r);reply(ack,ok());});
+ s.on('game:draw',(_,ack)=>{const r=room(s,true);if(!r||r.status!=='playing')return reply(ack,err('No puedes cantar ahora.'));if(!r.deck.length)return reply(ack,err('Ya salieron las 54 cartas.'));r.called.push(r.deck.pop());announce(r);reply(ack,ok({card:r.called.at(-1)}));});
+ s.on('game:mark',(data,ack)=>{const r=room(s),p=r&&s.data.role==='player'&&r.players.get(s.data.playerId);if(!p||r.status!=='playing')return reply(ack,err('No hay partida activa.'));const id=Number(data?.cardId);if(!p.board.includes(id)||!r.called.includes(id))return reply(ack,err('Solo puedes marcar cartas de tu cartón que ya hayan salido.'));p.marked=p.marked.includes(id)?p.marked.filter(x=>x!==id):[...p.marked,id];s.emit('player:marked',p.marked);reply(ack,ok({marked:p.marked}));});
+ s.on('game:claim',(_,ack)=>{const r=room(s),p=r&&s.data.role==='player'&&r.players.get(s.data.playerId);if(!p||r.status!=='playing')return reply(ack,err('No puedes cantar lotería ahora.'));if(!wins(p.board,p.marked.filter(x=>r.called.includes(x)),r.pattern))return reply(ack,err('Todavía no completas la figura.'));p.winner=true;r.status='finished';announce(r);io.to(r.code).emit('game:winner',{name:p.name});reply(ack,ok({winner:p.name}));});
+ s.on('game:reset',(_,ack)=>{const r=room(s,true);if(!r)return reply(ack,err('Solo el anfitrión puede reiniciar.'));r.status='lobby';r.called=[];r.deck=[];for(const p of r.players.values()){p.board=board();p.marked=[];p.winner=false;io.to(r.code).emit('player:newBoard',{playerId:p.id,board:p.board});}announce(r);reply(ack,ok());});
+ s.on('disconnect',()=>{const r=room(s),p=r&&s.data.role==='player'&&r.players.get(s.data.playerId);if(p){p.connected=[...io.sockets.sockets.values()].some(x=>x.id!==s.id&&x.connected&&x.data.code===r.code&&x.data.playerId===p.id);announce(r);}});
+});
+server.listen(Number(process.env.PORT||3000),'0.0.0.0',()=>console.log('🎴 Lotería lista'));
