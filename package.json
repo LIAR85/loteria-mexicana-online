@@ -1,0 +1,18 @@
+{
+  "name": "loteria-mexicana-online",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lotería mexicana multijugador con salas en tiempo real",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}
