@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#76263e">
+<title>🎴 Lotería Mexicana Online</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="top"><div class="brand">🎴 Lotería Mexicana <span>Online</span></div><div id="connection">Conectando…</div></header>
+<main>
+<section id="landing" class="hero">
+ <div><div class="tag">EL JUEGO QUE NOS UNE</div><h1>¡Corre y se va corriendo!</h1><p>Juega lotería mexicana en línea con amigos y familia. Crea una sala privada, reparte cartones y canta las cartas en tiempo real.</p><div class="chips"><span>✓ 54 cartas</span><span>✓ Hasta 120 participantes</span><span>✓ Desde celular o computadora</span></div></div>
+ <div class="entry">
+  <div class="panel"><div class="emoji">🎙️</div><h2>Ser anfitrión</h2><p>Organiza una sala y canta las cartas.</p><label for="pattern">Modalidad para ganar</label><select id="pattern"><option value="line">Una línea</option><option value="corners">Cuatro esquinas</option><option value="full">Cartón lleno</option></select><button id="create" class="primary">Crear sala</button></div>
+  <div class="panel"><div class="emoji">🎉</div><h2>Entrar a jugar</h2><p>Recibe tu cartón personal.</p><label for="name">Tu nombre</label><input id="name" maxlength="26" placeholder="Ej. María"><label for="code">Código de sala</label><input id="code" maxlength="6" placeholder="Ej. A1B2C3"><button id="join" class="primary">Entrar a la sala</button></div>
+ </div>
+</section>
+<section id="session" class="hidden"><div class="session-header"><div><div class="tag" id="role"></div><h1>Sala <span id="roomCode"></span></h1><p id="gameStatus"></p></div><button id="exit" class="soft">Salir</button></div>
+<div class="layout"><div class="gamecol">
+<section id="host" class="panel hidden"><div class="tag">CARTA ACTUAL</div><div class="draw"><div id="bigEmoji" class="cardemoji">🎴</div><div><h2 id="cardName">¡Listos para jugar!</h2><p id="cardCount">Aún no se han cantado cartas</p></div></div><div class="actions"><button id="start" class="primary">▶ Iniciar partida</button><button id="draw" class="primary">🔊 Cantar siguiente</button><button id="reset" class="soft">↻ Nueva ronda</button></div></section>
+<section id="player" class="hidden"><div class="playerhead"><div><div class="tag">TU CARTÓN</div><h2 id="playerTitle"></h2></div><span id="patternTitle"></span></div><div id="board" class="board"></div><button id="claim" class="claim">🏆 ¡LOTERÍA!</button><p class="hint">Marca solamente las cartas que ya fueron cantadas.</p></section>
+<section class="panel"><h3>Cartas cantadas <span id="count" class="counter">0 / 54</span></h3><div id="history" class="history"><p>Aquí aparecerán las cartas.</p></div></section>
+</div><aside><section class="panel"><div class="tag">COMPARTE EL CÓDIGO</div><div id="share" class="share"></div><button class="soft wide" id="copy">📋 Copiar enlace</button></section><section class="panel"><h3>Jugadores conectados <span id="playerCount" class="counter">0</span></h3><div id="players"></div></section><section class="panel"><div class="tag">CÓMO GANAR</div><p id="rules"></p></section></aside></div></section>
+</main><footer>🎴 Lotería Mexicana Online · Partidas privadas y diversión compartida</footer>
+<div id="toast" class="toast hidden"></div><div id="winner" class="modal hidden"><div class="winnerbox"><div class="emoji">🎉🏆🎉</div><h1>¡LOTERÍA!</h1><p id="winnerName"></p><button id="closeWinner" class="primary">Cerrar</button></div></div>
+<script src="/socket.io/socket.io.js"></script><script src="/app.js"></script>
+</body></html>
